@@ -37,5 +37,3 @@ Okay, without further ado, here is the algorithm for constacyclic partitioning t
 9. Now we take our sets left over from step 7 and turn them into polynomials. For each member of a set, k, turn it into *(x-b^k)*, then multiply each member of the set. For example, {1,4,5} becomes *(x-b^1)(x-b^4)(x-b^5)*.
 
 10. Now you have a set of polynomials, each of which generate a constacyclic code. Note that it is still possible that some of them produce equivalent codes. However, it's guaranteed that any codes eliminated in step 7 were equivalent to one that you generated.
-
-That's all from me. Next you will hear from
