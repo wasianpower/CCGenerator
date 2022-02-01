@@ -1,0 +1,304 @@
+q:=xxx; //enter alphabet
+length:=xxx;//enter length
+b:=xxx; // shift constant
+dimcap:=xxx; //cap on code dimension to be considered
+
+n:=length;
+ROU_File:= "ROU_GF" cat Sprint(q);
+
+//Declare shift constant and field 
+if q eq 4 then
+  P<y> := PolynomialRing(GF(2));
+  F<A> := GF(4);
+  if b eq 1 then
+    a:= F!1;
+  else
+    a:= A;
+  end if;
+elif q eq 8 then
+  P<y> := PolynomialRing(GF(2));
+  F<A> := ext<GF(2)|y^3+y+1>;
+  if b eq 1 then
+    a:= F!1;
+  else
+    a:= A;
+  end if;
+elif q eq 9 then
+  P<y> := PolynomialRing(GF(3));
+  F<A> := ext<GF(3)|y^2+2*y+2>;
+  if b eq 0 then
+    a:= F!1;
+  else
+    a:= A^b;
+  end if;
+else
+  F:= GF(q);
+  a:= F!b;
+end if;
+
+r:= Order(a);
+p:=Characteristic(F);
+P<x>:=PolynomialRing(F);
+n_prime:=length;
+t:=0;
+f:=P!(x^n-a);
+//gets the highest power of prime that divides n.
+while ((n_prime) mod (p)) eq 0 do
+  n_prime := n_prime div p;
+  t:=t+1;
+end while;
+power:=p^t;
+
+extension:=n_prime*r;
+//Extend field to find root of unity
+if extension eq 1 then
+  EF:= F;
+else
+  exten:=Order(q,extension);
+  pt:=IrreduciblePolynomial(F, exten);
+  //EF<w>:=RandomExtension(F,exten);
+  EF<w>:=ext<F|pt>;
+end if;
+
+EP<x>:=PolynomialRing(EF);
+
+polys:=[];
+dimensi:=[];
+
+AllCycs:=[]; //Stores elements "used" in previously made cyc. cosets
+ocosets:=[]; //Stores all cyc. cosets
+
+//generate elements set
+elements:=[];
+for i in [0..n_prime-1] do
+  Append(~elements,(1+i*r) mod (n_prime*r));
+end for;
+
+for check in elements do
+  if check in AllCycs then
+    continue;
+  end if;
+  ocoset:=[]; //our current cyclotomic coset
+  ocoset[1]:=check;
+  pr:=(q*check) mod (extension);
+  //generates all elements of the cyc coset
+  while pr ne ocoset[1] do
+    Append(~ocoset,(pr) mod (extension));
+    pr:=(pr*q) mod (extension);
+  end while;
+  Sort(~ocoset);
+  Append(~ocosets, ocoset);
+  for i:=1 to #ocoset do
+    Append(~AllCycs,ocoset[i]);
+  end for;
+end for;
+//By this point, we have ocosets, which contains cosets but the first element is the least element
+
+//get a root of unity that "works"
+rlist := [];
+for f in F do
+    Append(~rlist,f);
+end for;
+count:=0;
+prim:= EF!0;
+while (not IsPrimitive(prim)) do
+    count+:=1;
+    pc:= 0;
+    prim:= EF!0;
+    rcount := count;
+    while rcount gt 0 do
+      prim+:= rlist[(rcount mod #rlist)+1]*w^pc;
+      rcount := rcount div #rlist;
+      pc+:= 1;
+    end while;
+end while;
+
+__rou:=(prim)^((q^(exten)-1) div extension);
+rfound := false;
+nr := n_prime*r;
+pow:= 0;
+for j in [1.. nr-1] do
+  poly:= EP!1;
+  rou := __rou^j;
+  if Order(rou) ne nr then
+    continue;
+  end if;
+  for i in ocosets[1] do
+    poly*:= (x-rou^i);
+  end for;
+  if (f mod poly) eq 0 then
+    rfound := true;
+    pow := j;
+    break;
+  end if;
+end for;
+
+if not rfound then
+  msg := Sprint(n) cat ", Found no roots of unity that work";
+  print(msg);
+  PrintFile(ROU_File, msg);
+  exit;
+end if;
+msg:= Sprint(n) cat ", " cat Sprint(rou) cat ", " cat Sprint(pow);
+print(msg);
+//PrintFile(ROU_File, msg);
+
+//Find all combinations of cyclotomic cosets
+totalnum:=(power+1)^#ocosets-2; //Total number of divisors or unions of cyclotomic cosets
+totalnum;
+pocosets:=[]; //possible cosets
+for num in [1..totalnum] do
+  pocotemp:=[]; //possible coset temporary
+  tempnum:=num;
+  j:=1;
+  entnum:=0;
+  //This loop generates a unique combination of cosets from a given num between 1 and the total number of possible coset combinations
+
+  //This loop generates a union of cyc cosets
+  //As a note-- this could probably be optimized, but that would probably require a total rework of it as in its current state any change would send it crashing and burning down.
+  while tempnum gt 0 do
+    modval:=(tempnum) mod (power+1); //modval is the number of times the coset appears in the union
+    if modval ne 0 then
+      for z:=1 to modval do
+        for i:=1 to #ocosets[j] do
+          pocotemp[entnum+(z-1)*#ocosets[j]+i]:=ocosets[j][i];  
+        end for;
+      end for;
+      entnum:=entnum+#ocosets[j]*modval; //Just sets the index position of the next coset in the union
+    end if;
+    tempnum:=tempnum div (power+1);
+    j:=j+1; //j is which coset we're looking at
+  end while;
+
+  //Check for linear maps between the unions before adding to pocosets list
+  if #pocotemp le dimcap or length-#pocotemp le dimcap then //the number of elements in pocotemp is equal to the degree of the generator polynomial
+    stored:=0; //the parameter to check a map is
+    k:=1; // k is the counter for going through pocosets
+    while k le #pocosets and stored eq 0 do
+      if #pocotemp eq #pocosets[k] then //they must have the same number of elements for a map to exist between them
+        stored2:=-1;
+        coef:=1;
+        while stored eq 0 and coef lt n_prime do
+          if GCD(coef,length) eq 1 then
+            const:=0;
+            while const lt n_prime and stored2 eq -1 do
+              isEquiv:= false;
+
+              for j:=1 to #pocosets[k] do 
+              //check for ontoness
+              //the map is already one to one so if it's onto then its a map
+              //and therefore will produce equivalent generators 
+              //so we throw it in the trash where it belongs
+                if Multiplicity(pocosets[k],pocosets[k][j]) ne Multiplicity(pocotemp,((pocosets[k][j]*coef+const) mod (n_prime))) then
+                  isEquiv:=true;
+                  break;
+                end if;
+              end for;
+              if not isEquiv then
+                stored:=coef;
+                stored2:=const;
+              end if;
+              const+:=1;
+            end while;
+          end if;
+          coef:=coef+1;
+        end while;
+      end if;
+      k:=k+1;
+    end while;
+    //if it wasnt equivalent to anything, add it to pocosets.
+    if stored eq 0 then 
+      Append(~pocosets,pocotemp);
+    end if;
+  end if;
+end for;
+for coset in pocosets do
+  poly:=EP!1;
+  for i:=1 to #coset do
+    poly:=poly*(x-rou^coset[i]);
+  end for;
+  poly:=P!poly;
+  f mod poly;
+  Append(~polys,poly);
+  dim:=length-Degree(poly);
+  Append(~dimensi,dim);
+end for;
+
+
+//Sorts both sequences by degree
+ParallelSort(~polys, ~dimensi);
+
+// ******* CONSTACYCLIC GENERATION STARTS HERE ********************
+
+// --------------------------------------------------------------------
+
+//******************************************************************
+
+SWITCH_CheckMinDist := true; //true if you want to calculate MinDist for each generator. Not required if using this QT Codes.
+SWITCH_Sort := true;  //true if you want to sort by dimension and then distance.
+NGEN_LIMIT:= 10^6; //limit for number of divisors of x^n-a. Aliter, number of different generators for code of length n.
+TIME_LIMIT:= 1000;  //limit for Minimum Distance calculation
+MinDist_Threads:= 8; //Number of CPU threads to use. More is faster but lower it if you plan on running multiple instances of this code simultaneously.
+RANDOM_FACT := false; //true for checking random generators instead of an exhaustive search
+Great_File := "__GreatCodes.txt";
+Good_File := "__GoodCodes.txt";
+compare_Dim:= function(x,y)
+    if x[2] eq y[2] then
+        return y[3]-x[3];
+    else
+        return y[2]-x[2];
+    end if;
+end function;
+
+Distance:=[];
+skipped:=0;
+// LOOPING THROUGH ALL THE GENERATORS
+for gen in polys do
+  Dist:=0; // this will update if the min distance is calculated
+  C:= ConstaCyclicCode(n,gen,a);
+  Dim:=Dimension(C);
+  if SWITCH_CheckMinDist eq true then
+    isLowerBound:=false;
+    if (Dim ge dimcap) and (n-Dim ge dimcap) then
+      Dist:=-1;
+    else
+        Dist_best := BKLCLowerBound(GF(q),n,Dim);
+        Dist_best_up := BKLCUpperBound(GF(q),n,Dim);
+        if not Dist_best eq Dist_best_up then
+          isLowerBound,throwOne,throwTwo:=VerifyMinimumDistanceLowerBound(C,Dist_best: MaximumTime:=TIME_LIMIT);
+          if isLowerBound then
+            Dist:=MinimumDistance(C: MaximumTime:=TIME_LIMIT, Nthreads:=MinDist_Threads);
+          end if;
+        end if;
+      end if;
+    end if;
+    Append(~Distance,Dist);
+    if Dist eq -1 then
+      skipped +:= 1;
+    elif (isLowerBound) then
+      C_best, best_exists:= BKLC(F,n,Dim);
+      if (not best_exists) and (Dist ge Dist_best) then
+        printf "Great code found! [%o,%o,%o] \nConstaCyclic shift constant %o\n %o\n\n",a,n,Dim,Dist, gen;
+        PrintFile(Great_File,[*n,Dim,Dist,gen*]: Overwrite:=false);
+
+      elif Dist gt Dist_best then
+        printf "Great code found! [%o,%o,%o] \nConstaCyclic shift constant %o\n %o\n\n",a,n,Dim,Dist, gen;
+        PrintFile(Great_File,[*n,Dim,Dist,gen*]: Overwrite:=false);
+
+      elif Dist eq Dist_best then
+        printf "Good code found! [%o,%o,%o]\n %o\n\n",n,Dim,Dist, gen;
+        PrintFile(Good_File,[*n,Dim,Dist,gen*]: Overwrite:=false);
+      end if;
+    end if;
+end for;
+
+if SWITCH_CheckMinDist eq true then
+  printf "Reached end of program. %o generator(s) skipped.\n", skipped;
+  for i in [1..#polys] do
+      printf "%o, %o, %o\n", dimensi[i], Distance[i], polys[i];
+  end for;
+else
+  for i in [1..#polys] do
+      printf "%o, %o\n", dimensi[i], polys[i];
+  end for;
+end if;

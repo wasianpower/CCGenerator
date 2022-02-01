@@ -1,0 +1,39 @@
+q := x;
+n := x;
+K := GF(q);
+a := K!x;
+P<x> := PolynomialRing(K);
+
+f := P ! (x^n - a);
+factors := Factorization(f);
+print(factors);
+
+gen:=[P! 1];
+for i in [1..#factors] do
+	ngen:=#gen;
+	for j in [1..factors[i][2]] do
+    	for k in [1..ngen] do
+        	newf:=(gen[k]*factors[i][1]^j) mod f;
+        	Append(~gen,newf);
+    	end for;
+	end for;
+end for;
+Remove(~gen,1);
+Prune(~gen);
+
+EqCodes:=[];
+
+for i in gen do
+	C:= ConstaCyclicCode(n,i,a);
+	flag:=0;
+	for j in EqCodes do
+  	if IsEquivalent(ConstaCyclicCode(n,j[1],a),C) eq true then
+    	flag:=1;
+    	break;
+   	end if;
+	end for;
+	if flag eq 0 then
+  	Append(~EqCodes,[*i,[Length(C), Dimension(C),MinimumDistance(C)]*]);
+	end if;
+end for;
+EqCodes;

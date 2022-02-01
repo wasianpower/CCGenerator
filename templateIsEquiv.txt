@@ -1,0 +1,122 @@
+q := x;
+n := x;
+
+a := x;
+
+if q eq 4 then
+  P<y> := PolynomialRing(GF(2));
+  K<A> := ext<GF(2)|y^2+y+1>;
+  a:= K.1^(b-1);
+elif q eq 8 then
+  P<y> := PolynomialRing(GF(2));
+  K<A> := ext<GF(2)|y^3+y+1>;
+  a:= K.1^(b-1);
+elif q eq 9 then
+  P<y> := PolynomialRing(GF(3));
+  compa := b div 3;
+  compb := b mod 3;
+  K<A> := ext<GF(3)|y^2+1>;
+  a:= K! compa * A + compb;
+else
+  K := GF(q);
+  a:= K!b;
+end if;
+
+a := K!a;
+
+//switches and limits
+//only generator polynomials
+SWITCH_CheckMinDist := false; //true if you want to calculate MinDist for each generator. Not required if using this QT Codes.
+SWITCH_Sort := true;  //true if you want to sort by dimension and then distance.
+NGEN_LIMIT:= 1000000; //limit for number of divisors of x^n-a. Aliter, number of different generators for code of length n.
+MinDist_TIME_LIMIT:= 1000;  //limit for Minimum Distance calculation
+MinDist_Threads:= 8; //Number of CPU threads to use. More is faster but lower it if you plan on running multiple instances of this code simultaneously.
+RANDOM_FACT := false; //true for checking random generators instead of an exhaustive search
+
+//functions
+compare_Dim:= function(x,y)
+    if x[2] eq y[2] then
+        return y[3]-x[3];
+    else
+        return y[2]-x[2];
+    end if;
+end function;
+
+
+f := P ! (x^n - a);
+factors := Factorization(f);
+//All factors have the same power
+Base:= factors[1][2]+1;
+nfact:=#factors;
+ngen:= (Base)^(nfact)- 1; // Excluding 0 and the x^n-a as factors
+
+ngen;
+if ngen ge NGEN_LIMIT then
+    printf "Number of factors  exceeds limit\n";
+    RANDOM_FACT:= true;
+    ngen:= NGEN_LIMIT;  //We check only a few limited random generators
+end if;
+
+L:=IntegerRing(Base);
+V:=VectorSpace(L,nfact);
+EqCodes:=[];
+skipped:=0;
+
+blacklist:= [V![L|0:x in [1..nfact]],V![L|Base-1:x in [1..nfact]]];
+for v in V do
+  if v in blacklist then
+    continue;
+    end if;
+  gen:= P!1;
+  if RANDOM_FACT then
+    l:=Random(V);
+  else
+    l:=v;
+  end if;
+
+  for i in [1..nfact] do
+    for j in [1..l[i]] do
+      gen:= (gen * factors[i][1]) mod f;
+    end for;
+  end for;
+
+  C:= ConstaCyclicCode(n,gen,a);
+  flag:=0;
+
+  //checks for equivalence using IsEquivalent
+  for j in EqCodes do
+    if IsEquivalent(ConstaCyclicCode(n,j[1],a),C: AutomorphismGroups:="None") eq true then
+      flag:=1;
+      break;
+    end if;
+  end for;
+
+  if flag eq 0 then
+    Dist:= 0;
+    if SWITCH_CheckMinDist eq true then
+      Dist:=MinimumDistance(C: MaximumTime:=MinDist_TIME_LIMIT, Nthreads:=MinDist_Threads);
+    end if;
+    Dim:=Dimension(C);
+    if Dist eq -1 then
+      skipped +:= 1;
+    else
+      Append(~EqCodes,[*gen,Dim,Dist*]);
+    end if;
+  end if;
+end for;
+
+if SWITCH_Sort eq true then
+    Sort(~EqCodes,compare_Dim);
+end if;
+
+
+if SWITCH_CheckMinDist eq true then
+  printf "Reached end of program. %o generator(s) skipped.\n", skipped;
+  for i in EqCodes do
+      printf "%o, %o, %o\n", i[2], i[3], i[1];
+  end for;
+else
+  for i in EqCodes do
+      printf "%o, %o\n", i[2], i[1];
+  end for;
+end if;

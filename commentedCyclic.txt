@@ -1,0 +1,265 @@
+q:=xxx; //enter alphabet
+length:=xxx; //enter length
+b:=xxx; // shift constant
+dimcap:=xxx;
+n:=length;
+F:=GF(q); //Creates field
+a:=F!b; //Stores constacyclic shift constant
+P<x>:=PolynomialRing(F); //TODO: fix for nonprime
+module:=length;
+t:=0;
+
+//gets the highest power of prime that divides module.
+//TODO: fix for nonprime
+while (module mod q) eq 0 do
+  module:=module div q;
+  t:=t+1;
+end while;
+modnums:=q^t;
+
+//Extend field to find root of unity
+if module eq 1 then
+  EF:= F;
+else
+  exten:=Order(q,module);
+  EF<w>:=RandomExtension(F,exten);
+end if;
+rou:=RootOfUnity(module,EF);
+
+polys:=[];
+dimensi:=[];
+
+//Cyclotemic Coset Stuff
+AllCycs:=[]; //
+ocosets:=[[]]; 
+//whatcha doin there tie
+tie:=[];
+for i:=1 to length do
+  tie[i]:=0;
+end for;
+//TODO: above 4 lines can all be 1 line
+coit:=1;
+j:=1;
+
+
+
+//TODO: refine
+while check lt module do
+  Cyccoset:=[]; //contains the generated cyc coset for each LOOPING
+  ocoset:=[]; //note: singular version of ocosets. Contains all elements of cyccoset that are greater than or equal to the first element
+  Cyccoset[1]:=check;
+  p:=q*check mod module;
+  c:=2; 
+  //generates all elements of the cyc coset
+  while p ne Cyccoset[1] do
+    Cyccoset[c]:=p mod module;
+    p:=p*q mod module;
+    c:=c+1;
+  end while;
+  ocoset[1]:=Cyccoset[1];
+  u:=2;
+  //Eliminates elements of coset that are less than the first element
+  for k:=Cyccoset[1]+1 to module do
+    for i:=2 to #Cyccoset do
+      if k eq Cyccoset[i] then
+        ocoset[u]:=Cyccoset[i];
+        u:=u+1;
+      end if;
+    end for;
+  end for;
+  //...but why? ^^
+
+  ocosets[coit]:=ocoset;
+  coit:=coit+1;
+
+
+  for i:=1 to #Cyccoset do
+    AllCycs[j]:=Cyccoset[i];
+    j:=j+1;
+  end for;
+
+  //TODO: refine
+  i:=1;
+  while i le #AllCycs do
+    if AllCycs[i] eq check then
+      check:=check+1;
+      i:=1;
+    end if;
+    i:=i+1;
+  end while;
+end while;
+//By this point, we have ocosets, which contains cosets but the first element is the least element
+
+//TODO: refine ocosets to only include cosets with elements in the set {w|w=ir,r=|a|,i={0,1,2...n-2,n-1}}.
+
+//Find all combinations of cyclotomic cosets
+totalnum:=(modnums+1)^#ocosets-2; //Total number of divisors or unions of cyclotomic cosets
+totalnum;
+pocosets:=[[]]; //possible cosets
+equcount:=1;
+num:=1;
+while num le totalnum do
+  pocotemp:=[]; //possible coset temporary
+  tempnum:=num;
+  j:=1;
+  entnum:=0;
+  //This loop generates a unique combination of cosets from a given num between 1 and the total number of possible coset combinations
+
+  //TODO: clean up this loop
+  //This loop generates a union of cyc cosets
+  while tempnum gt 0 do
+    modval:=tempnum mod (modnums+1); //modval is the number of times the coset appears in the union
+    if modval ne 0 then
+      for z:=1 to modval do
+        for i:=1 to #ocosets[j] do
+          pocotemp[entnum+(z-1)*#ocosets[j]+i]:=ocosets[j][i];  
+        end for;
+      end for;
+      entnum:=entnum+#ocosets[j]*modval; //Just sets the index position of the next coset in the union
+    end if;
+    tempnum:=tempnum div (modnums+1);
+    j:=j+1; //j is which coset we're looking at
+  end while;
+
+  //Check for linear maps between the unions before adding to pocosets list
+  if #pocotemp le dimcap or length-#pocotemp le dimcap then //the number of elements in pocotemp is equal to the degree of the generator polynomial
+    stored:=0; //the parameter to check a map is
+    k:=1; // k is the counter for going through pocosets
+    while k le #pocosets and stored eq 0 do
+      if #pocotemp eq #pocosets[k] then //they must have the same number of elements for a map to exist between them
+        stored2:=-1;
+        i:=1;
+        while stored eq 0 and i lt module do
+          if GCD(i,length) eq 1 then
+            checkers:=0;
+            while checkers lt module and stored2 eq -1 do
+              count:=0;
+
+              for j:=1 to #pocosets[k] do //check for ontoness, the map is already one to one so if it's onto then its a map, and therefore will produce equivalent generators so we throw it in the trash where it belongs
+                if Multiplicity(pocosets[k],pocosets[k][j]) eq Multiplicity(pocotemp,((pocosets[k][j]*i+checkers) mod module)) then
+                  count:=count+1;
+                end if;
+              end for;
+              //TODO:
+              //this loop ^^ shouldnt work like this lol
+              //it should quit after it finds one that doesnt work
+              //also stored and stored2 should be bools
+              //they dont get used
+              if count eq #pocosets[k] then
+                stored:=i;
+                stored2:=checkers;
+              end if;
+              checkers:=checkers+1;
+            end while;
+          end if;
+          i:=i+1;
+        end while;
+      end if;
+      k:=k+1;
+    end while;
+    //if it wasnt equivalent to anything, increment equcount (the number of unique polynomials) and add it to pocosets. Then generate a polynomial for it, add it to polys, and find its generator and add that to dimensi.
+    if stored eq 0 then
+      pocosets[equcount]:=pocotemp;
+      equcount:=equcount+1;
+      roots:=[];
+      //TODO: combine with the next loop
+      for i:=1 to #pocotemp do
+        roots[i]:=rou^pocotemp[i];
+      end for;
+      //set polynomialring ef and f at the top instead of resetting them every time
+      P<x>:=PolynomialRing(EF);
+      poly:=P!1;
+      //TODO: combine with the previous loop
+      for i:=1 to #roots do
+        poly:=poly*(x-roots[i]);
+      end for;
+      P<x>:=PolynomialRing(F); //TODO: instead of f use the extension field we make in that field set if / else tree thingy you know the one.
+      poly:=P!poly;
+      polys[#polys+1]:=poly;
+      dim:=length-Degree(poly);
+      dimensi[#dimensi+1]:=dim;
+      end if;
+    end if;
+  num:=num+1;
+end while;
+
+
+
+
+//Sorts both sequences by degree
+ParallelSort(~polys, ~dimensi);
+
+// ******* CONSTACYCLIC GENERATION STARTS HERE ********************
+
+// --------------------------------------------------------------------
+
+//******************************************************************
+
+SWITCH_CheckMinDist := true; //true if you want to calculate MinDist for each generator. Not required if using this QT Codes.
+SWITCH_Sort := true;  //true if you want to sort by dimension and then distance.
+NGEN_LIMIT:= 10^6; //limit for number of divisors of x^n-a. Aliter, number of different generators for code of length n.
+TIME_LIMIT:= 1000;  //limit for Minimum Distance calculation
+MinDist_Threads:= 8; //Number of CPU threads to use. More is faster but lower it if you plan on running multiple instances of this code simultaneously.
+RANDOM_FACT := false; //true for checking random generators instead of an exhaustive search
+Great_File := "__GreatCodes.txt";
+Good_File := "__GoodCodes.txt";
+compare_Dim:= function(x,y)
+    if x[2] eq y[2] then
+        return y[3]-x[3];
+    else
+        return y[2]-x[2];
+    end if;
+end function;
+
+Distance:=[];
+skipped:=0;
+// LOOPING THROUGH ALL THE GENERATORS
+for gen in polys do
+  Dist:=0; // this will update if the min distance is calculated
+  C:= ConstaCyclicCode(n,gen,a);
+  Dim:=Dimension(C);
+  if SWITCH_CheckMinDist eq true then
+    isLowerBound:=false;
+    if (Dim ge dimcap) and (n-Dim ge dimcap) then
+      Dist:=-1;
+    else
+        Dist_best := BKLCLowerBound(GF(q),n,Dim);
+        Dist_best_up := BKLCUpperBound(GF(q),n,Dim);
+        if not Dist_best eq Dist_best_up then
+          isLowerBound,throwOne,throwTwo:=VerifyMinimumDistanceLowerBound(C,Dist_best: MaximumTime:=TIME_LIMIT);
+          if isLowerBound then
+            Dist:=MinimumDistance(C: MaximumTime:=TIME_LIMIT, Nthreads:=MinDist_Threads);
+          end if;
+        end if;
+      end if;
+    end if;
+    Append(~Distance,Dist);
+    if Dist eq -1 then
+      skipped +:= 1;
+    elif (isLowerBound) then
+      C_best, best_exists:= BKLC(F,n,Dim);
+      if (not best_exists) and (Dist ge Dist_best) then
+        printf "Great code found! [%o,%o,%o] \nConstaCyclic shift constant %o\n %o\n\n",a,n,Dim,Dist, gen;
+        PrintFile(Great_File,[*n,Dim,Dist,gen*]: Overwrite:=false);
+
+      elif Dist gt Dist_best then
+        printf "Great code found! [%o,%o,%o] \nConstaCyclic shift constant %o\n %o\n\n",a,n,Dim,Dist, gen;
+        PrintFile(Great_File,[*n,Dim,Dist,gen*]: Overwrite:=false);
+
+      elif Dist eq Dist_best then
+        printf "Good code found! [%o,%o,%o]\n %o\n\n",n,Dim,Dist, gen;
+        PrintFile(Good_File,[*n,Dim,Dist,gen*]: Overwrite:=false);
+      end if;
+    end if;
+end for;
+
+if SWITCH_CheckMinDist eq true then
+  printf "Reached end of program. %o generator(s) skipped.\n", skipped;
+  for i in [1..#polys] do
+      printf "%o, %o, %o\n", dimensi[i], Distance[i], polys[i];
+  end for;
+else
+  for i in [1..#polys] do
+      printf "%o, %o\n", dimensi[i], polys[i];
+  end for;
+end if;

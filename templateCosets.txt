@@ -1,0 +1,159 @@
+q:=x; //enter alphabet
+length:=x; //enter length
+
+a:=x; //dummy
+
+dimcap:=50;
+
+F:=GF(q); //Creates field
+a:=F!a; //Stores constacyclic shift constant
+P<x>:=PolynomialRing(F);
+module:=length;
+whilecount:=0;
+while (module mod q) eq 0 do
+  module:=module div q;
+  whilecount:=whilecount+1;
+end while;
+modnums:=q^whilecount;
+exten:=Order(q,module);
+EF<w>:=RandomExtension(F,exten);
+rou:=RootOfUnity(module,EF);
+polys:=[];
+dimensi:=[];
+
+//Cyclotemic Coset Function
+AllCycs:=[];
+ocosets:=[[]];
+tie:=[];
+for i:=1 to length do
+  tie[i]:=0;
+end for;
+coit:=1;
+j:=1;
+check:=0;
+
+while check lt module do
+  Cyccoset:=[];
+  ocoset:=[];
+  Cyccoset[1]:=check;
+  p:=q*check;
+  c:=2;
+  if p mod module ne check then
+    while p ne Cyccoset[1] do
+      Cyccoset[c]:=p mod module;
+      p:=p*q mod module;
+      c:=c+1;
+    end while;
+  end if;
+  ocoset[1]:=Cyccoset[1];
+  u:=2;
+  for k:=Cyccoset[1]+1 to module do
+    for i:=2 to #Cyccoset do
+      if k eq Cyccoset[i] then
+        ocoset[u]:=Cyccoset[i];
+        u:=u+1;
+      end if;
+    end for;
+  end for;
+  ocosets[coit]:=ocoset;
+  coit:=coit+1;
+
+
+  for i:=1 to #Cyccoset do
+    AllCycs[j]:=Cyccoset[i];
+    j:=j+1;
+  end for;
+
+  i:=1;
+  while i le #AllCycs do
+    if AllCycs[i] eq check then
+      check:=check+1;
+      i:=1;
+    end if;
+  i:=i+1;
+  end while;
+end while;
+
+//Find all combinations of cyclotomic cosets
+totalnum:=(modnums+1)^#ocosets-1;
+num:=1;
+totalnum;
+pocosets:=[[]];
+equcount:=1;
+go:=0;
+while num lt totalnum do
+  pocotemp:=[];
+  tempnum:=num;
+  j:=1;
+  entnum:=0;
+
+  while tempnum gt 0 do
+    modval:=tempnum mod (modnums+1);
+    if modval ne 0 then
+     for z:=1 to modval do
+      for i:=1 to #ocosets[j] do
+        pocotemp[entnum+i+(z-1)*#ocosets[j]]:=ocosets[j][i];
+      end for;
+      end for;
+      entnum:=entnum+#ocosets[j]*modval;
+    end if;
+    tempnum:=tempnum div (modnums+1);
+    j:=j+1;
+  end while;
+  if #pocotemp le dimcap or length-#pocotemp le dimcap then
+  stored:=0;
+  k:=1;
+  while k le #pocosets and stored eq 0 do
+    if #pocotemp eq #pocosets[k] then
+      stored2:=-1;
+      i:=1;
+      while stored eq 0 and i lt module do
+        if GCD(i,length) eq 1 then
+          checkers:=0;
+          while checkers lt module and stored2 eq -1 do
+          count:=0;
+          for j:=1 to #pocosets[k] do
+            if Multiplicity(pocosets[k],pocosets[k][j]) eq Multiplicity(pocotemp,((pocosets[k][j]*i+checkers) mod module)) then
+              count:=count+1;
+            end if;
+          end for;
+          if count eq #pocosets[k] then
+            stored:=i;
+            stored2:=checkers;
+          end if;
+          checkers:=checkers+1;
+          end while;
+        end if;
+        i:=i+1;
+      end while;
+    end if;
+    k:=k+1;
+  end while;
+  if stored eq 0 then
+    pocosets[equcount]:=pocotemp;
+    equcount:=equcount+1;
+    roots:=[];
+    for i:=1 to #pocotemp do
+      roots[i]:=rou^pocotemp[i];
+    end for;
+    P<x>:=PolynomialRing(EF);
+    poly:=P!1;
+    for i:=1 to #roots do
+      poly:=poly*(x-roots[i]);
+    end for;
+    P<x>:=PolynomialRing(F);
+    poly:=P!poly;
+    polys[#polys+1]:=poly;
+    dim:=length-Degree(poly);
+    dimensi[#dimensi+1]:=dim;
+    end if;
+  end if;
+  num:=num+1;
+end while;
+
+//Sorts both sequences by degree
+ParallelSort(~polys, ~dimensi);
+
+for i in [1..#polys] do
+  printf "%o, %o\n", dimensi[i], polys[i];
+end for;
