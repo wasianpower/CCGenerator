@@ -1,10 +1,6 @@
 # Hello Future Coding Theory Researchers at Kenyon and Beyond
 
-## Tonight you will be visited by three ghosts. 
-
-### I am the *ghost of researchers past*, and today I'm going to talk to you about the constacyclic partition algorithm.
-
-You could, if you wanted to, go through and read a bunch of papers and try to understand the algorithm that way. Or, you could read this. It's really up to you, so if you want to do this the hard way, Aydin's google drive folder is that way.
+## I'm going to talk to you about the constacyclic partition algorithm.
 
 Before you read this, you should have a general familiarity with the following topics:
 
@@ -43,43 +39,3 @@ Okay, without further ado, here is the algorithm for constacyclic partitioning t
 10. Now you have a set of polynomials, each of which generate a constacyclic code. Note that it is still possible that some of them produce equivalent codes. However, it's guaranteed that any codes eliminated in step 7 were equivalent to one that you generated.
 
 That's all from me. Next you will hear from
-
-### The Ghost of Researchers Present
-
-This is the part where I talk about our implementation.
-
-### The Ghost of Researchers Future
-
-This is the part where I talk about future optimizations.
-
-### The Ghost of Apple Pie Recipes
-
-Congrats for making it through. As a reward, you get my famous brown butter apple pie recipe.
-
-#### Ingredients:
-
-- 2 pie crust
-- 7 Granny smith apples
-- Lemon juice
-- 4 tablespoons butter
-- ½ cup white sugar
-- ½ cup brown sugar
-- 1 ½ teaspoon cinnamon
-- 1 teaspoon ground cloves
-- ½ teaspoon ground nutmeg
-- ½ teaspoon ground ginger or 1 slice fresh ginger chopped
-
-#### Instructions:
-1. Preheat the oven to 375.
-2. Peel and cut granny smith apples apples into small pieces, coat with lemon juice to prevent browning.
-3. Precook pie crust.
-4. Cook 3 tablespoons butter into brown butter, remove from heat and save in bowl.
-5. Melt 1 tablespoon of butter in pan over low heat. Place apples into pan, top with sugars and spices and mix to combine.
-6. Allow to cook into slightly soft, ~5 minutes.
-7. By the point the apples will have released a lot of liquid. Pour off this liquid.
-8. Top apples with brown butter. Mix and return to heat for five minutes.
-9. Place apples in pie crust, use second piecrust to do that criss cross thing on top.
-10. Egg or butter wash the top of the pie and sprinkle large crystal sugar over top.
-11. Bake for 20-30 minutes (until top is golden brown and crispy).
-
-***Life hack: save money on ingredients by stealing them from  Walmart***
